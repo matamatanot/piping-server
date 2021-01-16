@@ -2,11 +2,10 @@ import * as http from "http";
 import * as http2 from "http2";
 import * as log4js from "log4js";
 import * as multiparty from "multiparty";
-import {ParsedUrlQuery} from "querystring";
 import * as stream from "stream";
 import * as url from "url";
 
-import {OptionalProperty, optMap, nanOrElse} from "./utils";
+import {optMap, nanOrElse} from "./utils";
 import * as resources from "./resources";
 import {VERSION} from "./version";
 
@@ -76,17 +75,14 @@ export class Server {
    * @returns {number}
    */
   private static getNReceivers(reqUrl: string | undefined): number {
-    // Get query parameter
-    const query: ParsedUrlQuery | undefined =
-      // tslint:disable-next-line:max-line-length
-      // NOTE: Return type casting is safe because function parse(urlStr: string, parseQueryString: true, slashesDenoteHost?: boolean): UrlWithParsedQuery;
-      (optMap(url.parse, reqUrl, true) as OptionalProperty<url.UrlWithParsedQuery>)
-      .query;
-    // The number receivers
-    // NOTE: parseInt(undefined, 10) is NaN
-    const nReceivers: number = nanOrElse(parseInt((query?.n as string ?? "1"), 10), 1);
+    if(reqUrl === undefined) {
+      return 1
+    }
+    const nQuery = new url.URL(reqUrl).searchParams.get('n');
+    const nReceivers = nQuery === null ? 1 : nanOrElse(parseInt(nQuery, 10), 1);
     return nReceivers;
   }
+
   private readonly pathToEstablished: Set<string> = new Set();
   private readonly pathToUnestablishedPipe: Map<string, UnestablishedPipe> = new Map();
 
