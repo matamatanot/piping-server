@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "es6",
+    "moduleResolution": "node",
     "strictNullChecks": true,
     "noImplicitAny": true,
     "noImplicitThis": true,
