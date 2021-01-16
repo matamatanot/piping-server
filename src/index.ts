@@ -1,17 +1,16 @@
 #!/usr/bin/env node
 // (from: https://qiita.com/takayukioda/items/a149bc2907ef77121229)
 
-import * as fs from "fs";
-import * as http from "http";
-import * as http2 from "http2";
-import * as log4js from "log4js";
-import * as yargs from "yargs";
+import { readFileSync } from "fs";
+import { createServer } from "http";
+import { createSecureServer } from "http2";
+import { getLogger } from "log4js";
+import { option } from "yargs";
 
-import * as piping from "./piping";
+import { Server } from "./piping";
 
 // Create option parser
-const parser = yargs
-  .option("http-port", {
+const parser = option("http-port", {
     describe: "Port of HTTP server",
     default: 8080
   })
@@ -41,13 +40,13 @@ const serverKeyPath: string | undefined = args["key-path"];
 const serverCrtPath: string | undefined = args["crt-path"];
 
 // Create a logger
-const logger = log4js.getLogger();
+const logger = getLogger();
 logger.level = "info";
 
 // Create a piping server
-const pipingServer = new piping.Server({ logger });
+const pipingServer = new Server({ logger });
 
-http.createServer(pipingServer.generateHandler(false))
+createServer(pipingServer.generateHandler(false))
   .listen(httpPort, () => {
     logger.info(`Listen HTTP on ${httpPort}...`);
   });
@@ -56,10 +55,10 @@ if (enableHttps && httpsPort !== undefined) {
   if (serverKeyPath === undefined || serverCrtPath === undefined) {
     logger.error("Error: --key-path and --crt-path should be specified");
   } else {
-    http2.createSecureServer(
+    createSecureServer(
       {
-        key: fs.readFileSync(serverKeyPath),
-        cert: fs.readFileSync(serverCrtPath),
+        key: readFileSync(serverKeyPath),
+        cert: readFileSync(serverCrtPath),
         allowHTTP1: true
       },
       pipingServer.generateHandler(true)

@@ -1,17 +1,17 @@
-import * as http from "http";
-import * as http2 from "http2";
-import * as log4js from "log4js";
+import type { IncomingMessage, ServerResponse } from "http";
+import type { Http2ServerRequest, Http2ServerResponse } from "http2";
+import { Logger } from "log4js";
 import * as multiparty from "multiparty";
-import {ParsedUrlQuery} from "querystring";
-import * as stream from "stream";
-import * as url from "url";
+import { ParsedUrlQuery } from "querystring";
+import { Readable, PassThrough } from "stream";
+import { parse, resolve, URL, UrlWithParsedQuery } from "url";
 
 import {OptionalProperty, optMap, nanOrElse} from "./utils";
 import * as resources from "./resources";
 import {VERSION} from "./version";
 
-type HttpReq = http.IncomingMessage | http2.Http2ServerRequest;
-type HttpRes = http.ServerResponse | http2.Http2ServerResponse;
+type HttpReq = IncomingMessage | Http2ServerRequest;
+type HttpRes = ServerResponse | Http2ServerResponse;
 
 type ReqRes = {
   readonly req: HttpReq,
@@ -76,15 +76,11 @@ export class Server {
    * @returns {number}
    */
   private static getNReceivers(reqUrl: string | undefined): number {
-    // Get query parameter
-    const query: ParsedUrlQuery | undefined =
-      // tslint:disable-next-line:max-line-length
-      // NOTE: Return type casting is safe because function parse(urlStr: string, parseQueryString: true, slashesDenoteHost?: boolean): UrlWithParsedQuery;
-      (optMap(url.parse, reqUrl, true) as OptionalProperty<url.UrlWithParsedQuery>)
-      .query;
-    // The number receivers
-    // NOTE: parseInt(undefined, 10) is NaN
-    const nReceivers: number = nanOrElse(parseInt((query?.n as string ?? "1"), 10), 1);
+    if(reqUrl === undefined) {
+      return 1
+    }
+    const nQuery = new URL(reqUrl).searchParams.get('n');
+    const nReceivers = nQuery === null ? 1 : nanOrElse(parseInt(nQuery, 10), 1);
     return nReceivers;
   }
   private readonly pathToEstablished: Set<string> = new Set();
@@ -95,16 +91,16 @@ export class Server {
    * @param params
    */
   constructor(readonly params: {
-    readonly logger?: log4js.Logger
+    readonly logger?: Logger
   } = {}) { }
 
   public generateHandler(useHttps: boolean): Handler {
     return (req: HttpReq, res: HttpRes) => {
       // Get path name
       const reqPath: string =
-          url.resolve(
+          resolve(
             "/",
-            optMap(url.parse, req.url).pathname?.
+            optMap(parse, req.url).pathname?.
               // Remove last "/"
               replace(/\/$/, "") ?? ""
           );
